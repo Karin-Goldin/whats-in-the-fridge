@@ -1,0 +1,23 @@
+<svg width="120" height="160" viewBox="0 0 120 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Fridge body -->
+  <rect x="10" y="20" width="100" height="130" rx="12" fill="white" stroke="white" stroke-width="3"/>
+  
+  <!-- Fridge door line -->
+  <line x1="10" y1="80" x2="110" y2="80" stroke="#333" stroke-width="2"/>
+  
+  <!-- Top handle -->
+  <rect x="20" y="35" width="6" height="25" rx="3" fill="#333"/>
+  
+  <!-- Bottom handle -->
+  <rect x="20" y="95" width="6" height="25" rx="3" fill="#333"/>
+  
+  <!-- Fork -->
+  <g transform="translate(70, 60)">
+    <!-- Fork handle -->
+    <rect x="0" y="15" width="4" height="35" rx="2" fill="white"/>
+    <!-- Fork prongs -->
+    <rect x="-2" y="0" width="2" height="20" rx="1" fill="white"/>
+    <rect x="2" y="0" width="2" height="20" rx="1" fill="white"/>
+    <rect x="6" y="0" width="2" height="20" rx="1" fill="white"/>
+  </g>
+</svg> 

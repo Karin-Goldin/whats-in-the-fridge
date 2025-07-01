@@ -1,103 +1,302 @@
-import Image from "next/image";
+'use client';
+
+import { useState } from 'react';
+import {
+	PlusIcon,
+	TrashIcon,
+	DocumentArrowDownIcon,
+	ClipboardDocumentIcon,
+} from '@heroicons/react/24/outline';
+import { ChefHatIcon, RefrigeratorIcon } from 'lucide-react';
+
+interface Recipe {
+	title: string;
+	description: string;
+	ingredients: string[];
+	instructions: string[];
+	cookingTime: string;
+	servings: number;
+}
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+	const [ingredients, setIngredients] = useState<string[]>([]);
+	const [newIngredient, setNewIngredient] = useState('');
+	const [recipes, setRecipes] = useState<Recipe[]>([]);
+	const [isLoading, setIsLoading] = useState(false);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
-  );
+	const addIngredient = () => {
+		if (
+			newIngredient.trim() &&
+			!ingredients.includes(newIngredient.trim().toLowerCase())
+		) {
+			setIngredients([...ingredients, newIngredient.trim().toLowerCase()]);
+			setNewIngredient('');
+		}
+	};
+
+	const removeIngredient = (ingredient: string) => {
+		setIngredients(ingredients.filter((item) => item !== ingredient));
+	};
+
+	const generateRecipes = async () => {
+		if (ingredients.length === 0) return;
+
+		setIsLoading(true);
+		try {
+			const response = await fetch('/api/recipes', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({ ingredients }),
+			});
+
+			if (response.ok) {
+				const data = await response.json();
+				setRecipes(data.recipes);
+			}
+		} catch (error) {
+			console.error('Error generating recipes:', error);
+		} finally {
+			setIsLoading(false);
+		}
+	};
+
+	const handleKeyPress = (e: React.KeyboardEvent) => {
+		if (e.key === 'Enter') {
+			addIngredient();
+		}
+	};
+
+	const copyRecipe = async (recipe: Recipe) => {
+		const recipeText = formatRecipeText(recipe);
+		try {
+			await navigator.clipboard.writeText(recipeText);
+			// You could add a toast notification here
+			console.log('Recipe copied to clipboard!');
+		} catch (err) {
+			console.error('Failed to copy recipe:', err);
+		}
+	};
+
+	const downloadRecipe = (recipe: Recipe) => {
+		const recipeText = formatRecipeText(recipe);
+		const blob = new Blob([recipeText], { type: 'text/plain' });
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement('a');
+		a.href = url;
+		a.download = `${recipe.title
+			.replace(/[^a-z0-9]/gi, '_')
+			.toLowerCase()}.txt`;
+		document.body.appendChild(a);
+		a.click();
+		document.body.removeChild(a);
+		URL.revokeObjectURL(url);
+	};
+
+	const formatRecipeText = (recipe: Recipe) => {
+		return `${recipe.title}
+
+Description: ${recipe.description}
+Cooking Time: ${recipe.cookingTime}
+Serves: ${recipe.servings}
+
+INGREDIENTS:
+${recipe.ingredients.map((ingredient) => `• ${ingredient}`).join('\n')}
+
+INSTRUCTIONS:
+${recipe.instructions.map((step, index) => `${index + 1}. ${step}`).join('\n')}
+
+---
+Generated by What's in the Fridge? App
+`;
+	};
+
+	return (
+		<div className='min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-purple-50'>
+			<div className='container mx-auto px-4 py-8'>
+				{/* Header */}
+				<div className='text-center mb-12'>
+					<div className='flex items-center justify-center gap-3 mb-4'>
+						<RefrigeratorIcon className='h-12 w-12 text-blue-600' />
+						<h1 className='text-4xl font-bold text-gray-800'>
+							What&apos;s in the Fridge?
+						</h1>
+					</div>
+					<p className='text-xl text-gray-600'>
+						Add your ingredients and discover amazing recipes you can make right
+						now!
+					</p>
+				</div>
+
+				<div className='grid lg:grid-cols-2 gap-8'>
+					{/* Ingredients Section */}
+					<div className='bg-white rounded-2xl shadow-lg p-6'>
+						<div className='flex items-center gap-2 mb-6'>
+							<RefrigeratorIcon className='h-6 w-6 text-blue-600' />
+							<h2 className='text-2xl font-semibold text-gray-800'>
+								Your Ingredients
+							</h2>
+						</div>
+
+						{/* Add Ingredient Input */}
+						<div className='flex gap-2 mb-6'>
+							<input
+								type='text'
+								value={newIngredient}
+								onChange={(e) => setNewIngredient(e.target.value)}
+								onKeyPress={handleKeyPress}
+								placeholder='Enter an ingredient (e.g., eggs, tomatoes, cheese)'
+								className='flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+							/>
+							<button
+								onClick={addIngredient}
+								className='px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors'
+							>
+								<PlusIcon className='h-5 w-5' />
+							</button>
+						</div>
+
+						{/* Ingredients List */}
+						<div className='space-y-2 mb-6'>
+							{ingredients.length === 0 ? (
+								<p className='text-gray-500 text-center py-8'>
+									No ingredients added yet. Start by adding what you have in
+									your fridge!
+								</p>
+							) : (
+								ingredients.map((ingredient, index) => (
+									<div
+										key={index}
+										className='flex items-center justify-between bg-gray-50 px-4 py-3 rounded-lg'
+									>
+										<span className='font-medium text-gray-700 capitalize'>
+											{ingredient}
+										</span>
+										<button
+											onClick={() => removeIngredient(ingredient)}
+											className='text-red-500 hover:text-red-700 p-1'
+										>
+											<TrashIcon className='h-4 w-4' />
+										</button>
+									</div>
+								))
+							)}
+						</div>
+
+						{/* Generate Recipes Button */}
+						<button
+							onClick={generateRecipes}
+							disabled={ingredients.length === 0 || isLoading}
+							className='w-full py-4 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2'
+						>
+							{isLoading ? (
+								<>
+									<div className='animate-spin rounded-full h-5 w-5 border-b-2 border-white'></div>
+									Generating Recipes...
+								</>
+							) : (
+								<>
+									<ChefHatIcon className='h-5 w-5' />
+									Generate Recipes
+								</>
+							)}
+						</button>
+					</div>
+
+					{/* Recipes Section */}
+					<div className='bg-white rounded-2xl shadow-lg p-6'>
+						<div className='flex items-center gap-2 mb-6'>
+							<ChefHatIcon className='h-6 w-6 text-green-600' />
+							<h2 className='text-2xl font-semibold text-gray-800'>
+								Recipe Suggestions
+							</h2>
+						</div>
+
+						{recipes.length === 0 ? (
+							<div className='text-center py-12'>
+								<ChefHatIcon className='h-16 w-16 text-gray-300 mx-auto mb-4' />
+								<p className='text-gray-500'>
+									Add some ingredients and click &quot;Generate Recipes&quot; to
+									see what delicious meals you can make!
+								</p>
+							</div>
+						) : (
+							<div className='space-y-6'>
+								{recipes.map((recipe, index) => (
+									<div
+										key={index}
+										className='border border-gray-200 rounded-lg p-4'
+									>
+										<div className='flex justify-between items-start mb-3'>
+											<h3 className='text-xl font-semibold text-gray-800'>
+												{recipe.title}
+											</h3>
+											<div className='flex items-center gap-3'>
+												<div className='text-sm text-gray-500'>
+													<span className='block'>🕒 {recipe.cookingTime}</span>
+													<span className='block'>
+														👥 Serves {recipe.servings}
+													</span>
+												</div>
+												<div className='flex gap-2'>
+													<button
+														onClick={() => copyRecipe(recipe)}
+														className='p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors'
+														title='Copy recipe'
+													>
+														<ClipboardDocumentIcon className='h-5 w-5' />
+													</button>
+													<button
+														onClick={() => downloadRecipe(recipe)}
+														className='p-2 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors'
+														title='Download recipe'
+													>
+														<DocumentArrowDownIcon className='h-5 w-5' />
+													</button>
+												</div>
+											</div>
+										</div>
+										<p className='text-gray-600 mb-4'>{recipe.description}</p>
+
+										<div className='grid sm:grid-cols-2 gap-4'>
+											<div>
+												<h4 className='font-semibold text-gray-700 mb-2'>
+													Ingredients:
+												</h4>
+												<ul className='text-sm text-gray-600 space-y-1'>
+													{recipe.ingredients.map((ingredient, idx) => (
+														<li key={idx} className='flex items-start'>
+															<span className='text-green-600 mr-2'>•</span>
+															{ingredient}
+														</li>
+													))}
+												</ul>
+											</div>
+
+											<div>
+												<h4 className='font-semibold text-gray-700 mb-2'>
+													Instructions:
+												</h4>
+												<ol className='text-sm text-gray-600 space-y-1'>
+													{recipe.instructions.map((step, idx) => (
+														<li key={idx} className='flex items-start'>
+															<span className='text-blue-600 mr-2 font-medium'>
+																{idx + 1}.
+															</span>
+															{step}
+														</li>
+													))}
+												</ol>
+											</div>
+										</div>
+									</div>
+								))}
+							</div>
+						)}
+					</div>
+				</div>
+			</div>
+		</div>
+	);
 }
