@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
 
 		// Generate recipes using AI
 		const { object } = await generateObject({
-			model: openai('gpt-3.5-turbo'),
+			model: openai('gpt-4o'),
 			schema: RecipesResponseSchema,
 			prompt: `Given these ingredients: ${ingredients.join(', ')}, 
                generate 2-3 delicious and practical recipes that can be made using some or all of these ingredients.
