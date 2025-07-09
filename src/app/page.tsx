@@ -1,33 +1,30 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import {
-	PlusIcon,
-	DocumentArrowDownIcon,
-	ClipboardDocumentIcon,
-	ArrowLeftIcon,
-} from '@heroicons/react/24/outline';
-import { ChefHat, Clock, Users, Star, ShoppingCart, X } from 'lucide-react';
+	X,
+	Plus,
+	ChefHat,
+	Trash2,
+	Sparkles,
+	Clock,
+	Users,
+	Star,
+	ClipboardIcon,
+	DownloadIcon,
+} from 'lucide-react';
 
 // Types
-interface Ingredient {
-	id: string;
-	name: string;
-	category: string;
-}
-
 interface Recipe {
 	id: string;
-	title: string;
-	description: string;
-	cookTime: string;
+	name: string;
+	time: string;
 	servings: number;
 	difficulty: 'Easy' | 'Medium' | 'Hard';
-	rating: number;
 	ingredients: string[];
+	description: string;
 	instructions: string[];
-	missingIngredients: string[];
-	matchPercentage: number;
+	rating: number;
 }
 
 interface ApiRecipe {
@@ -39,55 +36,39 @@ interface ApiRecipe {
 	instructions: string[];
 }
 
-const INGREDIENT_CATEGORIES = [
-	'Vegetables',
-	'Fruits',
-	'Meat',
-	'Dairy',
-	'Grains',
-	'Spices',
-	'Other',
-];
-
-export default function FridgeRecipeApp() {
-	const [ingredients, setIngredients] = useState<Ingredient[]>([]);
-	const [newIngredient, setNewIngredient] = useState('');
+const FridgeApp = () => {
+	const [ingredients, setIngredients] = useState<string[]>([]);
+	const [inputValue, setInputValue] = useState('');
 	const [recipes, setRecipes] = useState<Recipe[]>([]);
-	const [loading, setLoading] = useState(false);
-	const [currentScreen, setCurrentScreen] = useState<'ingredients' | 'recipes'>(
-		'ingredients'
-	);
+	const [isGenerating, setIsGenerating] = useState(false);
+	const [showRecipes, setShowRecipes] = useState(false);
 
 	const addIngredient = () => {
-		if (newIngredient.trim()) {
-			const ingredient: Ingredient = {
-				id: Date.now().toString(),
-				name: newIngredient.trim(),
-				category: 'Other',
-			};
-			setIngredients([...ingredients, ingredient]);
-			setNewIngredient('');
+		if (
+			inputValue.trim() &&
+			!ingredients.includes(inputValue.trim().toLowerCase())
+		) {
+			setIngredients([...ingredients, inputValue.trim().toLowerCase()]);
+			setInputValue('');
 		}
 	};
 
-	const removeIngredient = (id: string) => {
-		setIngredients(ingredients.filter((ing) => ing.id !== id));
+	const removeIngredient = (ingredient: string) => {
+		setIngredients(ingredients.filter((item) => item !== ingredient));
 	};
 
-	const findRecipes = async () => {
+	const generateRecipes = async () => {
 		if (ingredients.length === 0) return;
 
-		setLoading(true);
-		setCurrentScreen('recipes');
+		setIsGenerating(true);
 
 		try {
-			const ingredientNames = ingredients.map((ing) => ing.name);
 			const response = await fetch('/api/recipes', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
 				},
-				body: JSON.stringify({ ingredients: ingredientNames }),
+				body: JSON.stringify({ ingredients }),
 			});
 
 			if (response.ok) {
@@ -96,64 +77,52 @@ export default function FridgeRecipeApp() {
 				const transformedRecipes = data.recipes.map(
 					(recipe: ApiRecipe, index: number) => ({
 						id: index.toString(),
-						title: recipe.title,
+						name: recipe.title,
 						description: recipe.description,
-						cookTime: recipe.cookingTime,
+						time: recipe.cookingTime,
 						servings: recipe.servings,
 						difficulty: 'Easy' as const,
-						rating: 4.5,
 						ingredients: recipe.ingredients,
 						instructions: recipe.instructions,
-						missingIngredients: [],
-						matchPercentage: Math.floor(Math.random() * 30) + 70, // 70-100%
+						rating: 4.5,
 					})
 				);
 				setRecipes(transformedRecipes);
+				setShowRecipes(true);
+			} else {
+				// Handle API errors gracefully
+				console.error('Failed to generate recipes');
 			}
 		} catch (error) {
 			console.error('Error generating recipes:', error);
 		} finally {
-			setLoading(false);
+			setIsGenerating(false);
 		}
 	};
 
-	const goBackToIngredients = () => {
-		setCurrentScreen('ingredients');
+	const handleKeyPress = (e: React.KeyboardEvent) => {
+		if (e.key === 'Enter') {
+			addIngredient();
+		}
+	};
+
+	const getMatchingIngredients = (recipeIngredients: string[]) => {
+		return recipeIngredients.filter((ingredient) =>
+			ingredients.some(
+				(userIngredient) =>
+					ingredient.toLowerCase().includes(userIngredient) ||
+					userIngredient.includes(ingredient.toLowerCase())
+			)
+		).length;
 	};
 
 	const copyRecipe = async (recipe: Recipe) => {
-		const recipeText = formatRecipeText(recipe);
-		try {
-			await navigator.clipboard.writeText(recipeText);
-			console.log('Recipe copied to clipboard!');
-		} catch (err) {
-			console.error('Failed to copy recipe:', err);
-		}
-	};
-
-	const downloadRecipe = (recipe: Recipe) => {
-		const recipeText = formatRecipeText(recipe);
-		const blob = new Blob([recipeText], { type: 'text/plain' });
-		const url = URL.createObjectURL(blob);
-		const a = document.createElement('a');
-		a.href = url;
-		a.download = `${recipe.title
-			.replace(/[^a-z0-9]/gi, '_')
-			.toLowerCase()}.txt`;
-		document.body.appendChild(a);
-		a.click();
-		document.body.removeChild(a);
-		URL.revokeObjectURL(url);
-	};
-
-	const formatRecipeText = (recipe: Recipe) => {
-		return `${recipe.title}
+		const recipeText = `${recipe.name}
 
 Description: ${recipe.description}
-Cooking Time: ${recipe.cookTime}
+Time: ${recipe.time}
 Serves: ${recipe.servings}
 Difficulty: ${recipe.difficulty}
-Rating: ${recipe.rating}/5
 
 INGREDIENTS:
 ${recipe.ingredients.map((ingredient) => `• ${ingredient}`).join('\n')}
@@ -162,14 +131,42 @@ INSTRUCTIONS:
 ${recipe.instructions.map((step, index) => `${index + 1}. ${step}`).join('\n')}
 
 ---
-Generated by What's in the Fridge? App
-`;
+Generated by What's in the Fridge? App`;
+
+		try {
+			await navigator.clipboard.writeText(recipeText);
+			// You could add a toast notification here
+		} catch (err) {
+			console.error('Failed to copy recipe:', err);
+		}
 	};
 
-	const handleKeyPress = (e: React.KeyboardEvent) => {
-		if (e.key === 'Enter') {
-			addIngredient();
-		}
+	const downloadRecipe = (recipe: Recipe) => {
+		const recipeText = `${recipe.name}
+
+Description: ${recipe.description}
+Time: ${recipe.time}
+Serves: ${recipe.servings}
+Difficulty: ${recipe.difficulty}
+
+INGREDIENTS:
+${recipe.ingredients.map((ingredient) => `• ${ingredient}`).join('\n')}
+
+INSTRUCTIONS:
+${recipe.instructions.map((step, index) => `${index + 1}. ${step}`).join('\n')}
+
+---
+Generated by What's in the Fridge? App`;
+
+		const blob = new Blob([recipeText], { type: 'text/plain' });
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement('a');
+		a.href = url;
+		a.download = `${recipe.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.txt`;
+		document.body.appendChild(a);
+		a.click();
+		document.body.removeChild(a);
+		URL.revokeObjectURL(url);
 	};
 
 	const renderStars = (rating: number) => {
@@ -185,299 +182,269 @@ Generated by What's in the Fridge? App
 		));
 	};
 
-	return (
-		<div className='min-h-screen bg-gradient-to-br from-pink-100 via-purple-50 via-blue-50 to-green-100'>
-			<div className='max-w-sm mx-auto px-4 py-6'>
-				{/* Ingredients Screen (Home) */}
-				{currentScreen === 'ingredients' && (
-					<div className='space-y-6'>
-						{/* Header */}
-						<div className='text-center'>
-							<div className='flex items-center justify-center gap-2 mb-3'>
-								<ChefHat className='w-8 h-8 text-orange-500' />
-								<h1 className='text-2xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 bg-clip-text text-transparent'>
-									What&apos;s in the Fridge?
-								</h1>
-							</div>
-							<p className='text-gray-600 text-sm px-2'>
-								Add ingredients & discover recipes! ✨
-							</p>
-						</div>
-
-						{/* Add Ingredient Form */}
-						<div className='bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-yellow-200 rounded-2xl p-4'>
-							<h2 className='text-lg font-bold mb-3 text-gray-800 flex items-center gap-2'>
-								<span className='text-xl'>🛒</span>
-								Add Ingredients
-							</h2>
-							<div className='space-y-3'>
-								<input
-									type='text'
-									value={newIngredient}
-									onChange={(e) => setNewIngredient(e.target.value)}
-									onKeyPress={handleKeyPress}
-									placeholder='Enter ingredient...'
-									className='w-full px-4 py-4 border-2 border-yellow-300 rounded-xl focus:ring-2 focus:ring-yellow-200 focus:border-yellow-400 transition-all text-base'
-								/>
-								<button
-									onClick={addIngredient}
-									className='w-full py-4 bg-gradient-to-r from-orange-400 to-pink-500 text-white rounded-xl hover:from-orange-500 hover:to-pink-600 transition-all active:scale-95 flex items-center justify-center gap-2 font-bold text-base'
-								>
-									<PlusIcon className='w-5 h-5' />
-									Add Ingredient
-								</button>
-							</div>
-						</div>
-
-						{/* Ingredients List */}
-						<div className='bg-gradient-to-br from-green-50 to-blue-50 border-2 border-green-200 rounded-2xl p-4'>
-							<h3 className='text-lg font-bold mb-3 text-gray-800 flex items-center gap-2'>
-								<span className='text-xl'>🥘</span>
-								Your Ingredients ({ingredients.length})
-							</h3>
-							{ingredients.length === 0 ? (
-								<div className='text-center py-8'>
-									<div className='text-6xl mb-3'>🥪</div>
-									<p className='text-gray-600 text-sm px-2'>
-										No ingredients yet. Add what you have! 🌟
-									</p>
-								</div>
-							) : (
-								<div className='space-y-3'>
-									{INGREDIENT_CATEGORIES.map((category) => {
-										const categoryIngredients = ingredients.filter(
-											(ing) => ing.category === category
-										);
-										if (categoryIngredients.length === 0) return null;
-
-										const categoryEmojis: Record<string, string> = {
-											Vegetables: '🥬',
-											Fruits: '🍎',
-											Meat: '🥩',
-											Dairy: '🧀',
-											Grains: '🌾',
-											Spices: '🌶️',
-											Other: '🍽️',
-										};
-
-										return (
-											<div key={category} className='bg-white rounded-xl p-3'>
-												<h4 className='font-bold text-gray-700 mb-2 flex items-center gap-2 text-sm'>
-													<span>{categoryEmojis[category] || '🍽️'}</span>
-													{category}
-												</h4>
-												<div className='flex flex-wrap gap-2'>
-													{categoryIngredients.map((ingredient) => (
-														<span
-															key={ingredient.id}
-															className='inline-flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-purple-100 to-pink-100 text-purple-800 rounded-full text-sm font-medium border border-purple-200 active:scale-95 transition-all'
-														>
-															{ingredient.name}
-															<button
-																onClick={() => removeIngredient(ingredient.id)}
-																className='hover:bg-purple-200 rounded-full p-1 transition-colors -mr-1'
-															>
-																<X className='w-3 h-3' />
-															</button>
-														</span>
-													))}
-												</div>
-											</div>
-										);
-									})}
-								</div>
-							)}
-
-							{ingredients.length > 0 && (
-								<button
-									onClick={findRecipes}
-									disabled={loading}
-									className='w-full mt-4 py-5 bg-gradient-to-r from-green-400 via-blue-500 to-purple-600 text-white rounded-2xl hover:from-green-500 hover:via-blue-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95 flex items-center justify-center gap-2 text-lg font-bold'
-								>
-									<ChefHat className='w-6 h-6' />
-									Find Recipes! 🎉
-								</button>
-							)}
-						</div>
+	if (showRecipes) {
+		return (
+			<div className='min-h-screen bg-gradient-to-br from-orange-50 to-red-50'>
+				<div className='max-w-sm mx-auto px-4 py-6'>
+					{/* Mobile Header */}
+					<div className='flex items-center justify-between mb-6 pt-2'>
+						<button
+							onClick={() => setShowRecipes(false)}
+							className='flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors p-2 rounded-lg active:scale-95'
+						>
+							<X size={24} />
+							<span className='font-medium'>Back</span>
+						</button>
+						<h1 className='text-lg font-bold text-gray-800'>AI Recipes</h1>
+						<div className='w-16'></div> {/* Spacer for centering */}
 					</div>
-				)}
 
-				{/* Recipes Screen */}
-				{currentScreen === 'recipes' && (
+					{/* Mobile Recipe Cards */}
 					<div className='space-y-4'>
-						{/* Header with Back Button */}
-						<div className='flex items-center gap-3 pb-2'>
-							<button
-								onClick={goBackToIngredients}
-								className='p-3 bg-white rounded-xl shadow-md active:scale-95 transition-all'
-							>
-								<ArrowLeftIcon className='w-6 h-6 text-gray-600' />
-							</button>
-							<div className='flex-1'>
-								<h1 className='text-xl font-bold bg-gradient-to-r from-green-600 via-teal-600 to-blue-600 bg-clip-text text-transparent'>
-									🍳 Recipe Ideas
-								</h1>
-								<p className='text-gray-600 text-sm'>
-									Based on {ingredients.length} ingredients
-								</p>
-							</div>
-						</div>
+						{recipes.map((recipe) => {
+							const matchCount = getMatchingIngredients(recipe.ingredients);
+							const matchPercentage = Math.round(
+								(matchCount / recipe.ingredients.length) * 100
+							);
 
-						{loading ? (
-							<div className='bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-200 rounded-2xl p-8 text-center'>
-								<div className='animate-spin w-12 h-12 border-4 border-purple-300 border-t-purple-600 rounded-full mx-auto mb-3'></div>
-								<p className='text-purple-700 font-bold'>
-									Finding recipes... ✨
-								</p>
-							</div>
-						) : recipes.length === 0 ? (
-							<div className='bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-yellow-200 rounded-2xl p-8 text-center'>
-								<div className='text-6xl mb-3'>👨‍🍳</div>
-								<p className='text-orange-700 font-bold text-sm mb-1'>
-									No recipes found!
-								</p>
-								<p className='text-orange-600 text-sm'>
-									Try adding more ingredients 😋
-								</p>
-							</div>
-						) : (
-							<div className='space-y-4'>
-								{recipes.map((recipe, index) => {
-									const gradients = [
-										'from-pink-100 to-purple-100 border-pink-200',
-										'from-blue-100 to-cyan-100 border-blue-200',
-										'from-green-100 to-teal-100 border-green-200',
-										'from-yellow-100 to-orange-100 border-yellow-200',
-										'from-purple-100 to-indigo-100 border-purple-200',
-									];
-									const gradient = gradients[index % gradients.length];
-
-									return (
+							return (
+								<div
+									key={recipe.id}
+									className='bg-white rounded-2xl shadow-lg p-5'
+								>
+									{/* Recipe Header */}
+									<div className='flex items-start justify-between mb-3'>
+										<h3 className='text-lg font-bold text-gray-800 flex-1 pr-3 leading-tight'>
+											{recipe.name}
+										</h3>
 										<div
-											key={recipe.id}
-											className={`bg-gradient-to-br ${gradient} border-2 rounded-2xl overflow-hidden active:scale-98 transition-all`}
+											className={`px-3 py-1 rounded-full text-xs font-bold flex-shrink-0 ${
+												matchPercentage >= 80
+													? 'bg-green-100 text-green-800'
+													: matchPercentage >= 60
+													? 'bg-yellow-100 text-yellow-800'
+													: 'bg-red-100 text-red-800'
+											}`}
 										>
-											<div className='p-4'>
-												<div className='flex justify-between items-start mb-3'>
-													<div className='flex-1 pr-2'>
-														<h3 className='text-lg font-bold text-gray-800 mb-1 flex items-center gap-1'>
-															{recipe.title}
-															<span className='text-lg'>🍽️</span>
-														</h3>
-														<p className='text-gray-700 text-sm leading-relaxed'>
-															{recipe.description}
-														</p>
-													</div>
-													<div className='flex flex-col items-end gap-2 flex-shrink-0'>
-														<div className='flex items-center gap-1'>
-															{renderStars(recipe.rating)}
-														</div>
-														<div className='flex gap-1'>
-															<button
-																onClick={() => copyRecipe(recipe)}
-																className='p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors active:scale-95'
-																title='Copy'
-															>
-																<ClipboardDocumentIcon className='h-4 w-4' />
-															</button>
-															<button
-																onClick={() => downloadRecipe(recipe)}
-																className='p-2 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors active:scale-95'
-																title='Download'
-															>
-																<DocumentArrowDownIcon className='h-4 w-4' />
-															</button>
-														</div>
-													</div>
-												</div>
+											{matchPercentage}%
+										</div>
+									</div>
 
-												<div className='flex items-center gap-2 mb-3 text-xs'>
-													<div className='flex items-center gap-1 bg-white rounded-full px-2 py-1'>
-														<Clock className='w-3 h-3 text-blue-500' />
-														<span className='font-bold'>{recipe.cookTime}</span>
-													</div>
-													<div className='flex items-center gap-1 bg-white rounded-full px-2 py-1'>
-														<Users className='w-3 h-3 text-green-500' />
-														<span className='font-bold'>{recipe.servings}</span>
-													</div>
-													<div className='flex items-center gap-1 bg-white rounded-full px-2 py-1'>
-														<div className='w-3 h-3 bg-gradient-to-r from-green-400 to-blue-500 rounded-full'></div>
-														<span className='font-bold'>
-															{recipe.matchPercentage}%
-														</span>
-													</div>
-												</div>
+									<p className='text-gray-600 mb-4 text-sm leading-relaxed'>
+										{recipe.description}
+									</p>
 
-												{recipe.missingIngredients.length > 0 && (
-													<div className='mb-3 p-3 bg-gradient-to-r from-orange-100 to-red-100 border border-orange-200 rounded-xl'>
-														<div className='flex items-center gap-2 mb-2'>
-															<ShoppingCart className='w-4 h-4 text-orange-600' />
-															<span className='font-bold text-orange-800 text-sm'>
-																Need to buy:
-															</span>
-														</div>
-														<div className='flex flex-wrap gap-1'>
-															{recipe.missingIngredients.map((ingredient) => (
-																<span
-																	key={ingredient}
-																	className='px-2 py-1 bg-orange-200 text-orange-800 rounded-full text-xs font-bold'
-																>
-																	{ingredient}
-																</span>
-															))}
-														</div>
-													</div>
-												)}
-
-												<div className='space-y-3'>
-													<div className='bg-white rounded-xl p-3'>
-														<h4 className='font-bold text-gray-800 mb-2 flex items-center gap-1 text-sm'>
-															<span>🥘</span>
-															Ingredients:
-														</h4>
-														<ul className='space-y-1'>
-															{recipe.ingredients.map((ingredient, index) => (
-																<li
-																	key={index}
-																	className='text-gray-700 flex items-center gap-2 text-sm'
-																>
-																	<span className='w-1.5 h-1.5 bg-purple-400 rounded-full flex-shrink-0'></span>
-																	{ingredient}
-																</li>
-															))}
-														</ul>
-													</div>
-													<div className='bg-white rounded-xl p-3'>
-														<h4 className='font-bold text-gray-800 mb-2 flex items-center gap-1 text-sm'>
-															<span>👨‍🍳</span>
-															Instructions:
-														</h4>
-														<ol className='space-y-2'>
-															{recipe.instructions.map((step, index) => (
-																<li
-																	key={index}
-																	className='text-gray-700 flex gap-2 text-sm'
-																>
-																	<span className='font-bold text-white bg-gradient-to-r from-purple-500 to-pink-500 rounded-full w-5 h-5 flex items-center justify-center text-xs flex-shrink-0 mt-0.5'>
-																		{index + 1}
-																	</span>
-																	<span className='leading-relaxed'>
-																		{step}
-																	</span>
-																</li>
-															))}
-														</ol>
-													</div>
-												</div>
+									{/* Recipe Meta */}
+									<div className='flex items-center justify-between mb-4'>
+										<div className='flex items-center gap-4 text-sm text-gray-500'>
+											<div className='flex items-center gap-1'>
+												<Clock size={16} />
+												<span className='font-medium'>{recipe.time}</span>
+											</div>
+											<div className='flex items-center gap-1'>
+												<Users size={16} />
+												<span className='font-medium'>{recipe.servings}</span>
 											</div>
 										</div>
-									);
-								})}
+										<div className='flex items-center gap-1'>
+											{renderStars(recipe.rating)}
+										</div>
+									</div>
+
+									{/* Ingredients */}
+									<div className='mb-4'>
+										<p className='text-sm font-bold text-gray-800 mb-2'>
+											Ingredients:
+										</p>
+										<div className='flex flex-wrap gap-2'>
+											{recipe.ingredients.map((ingredient, index) => {
+												const hasIngredient = ingredients.some(
+													(userIngredient) =>
+														ingredient.toLowerCase().includes(userIngredient) ||
+														userIngredient.includes(ingredient.toLowerCase())
+												);
+
+												return (
+													<span
+														key={index}
+														className={`px-3 py-1 rounded-full text-xs font-medium ${
+															hasIngredient
+																? 'bg-green-100 text-green-800 border border-green-200'
+																: 'bg-gray-100 text-gray-600'
+														}`}
+													>
+														{ingredient}
+													</span>
+												);
+											})}
+										</div>
+									</div>
+
+									{/* Instructions Preview */}
+									{recipe.instructions && recipe.instructions.length > 0 && (
+										<div className='mb-4'>
+											<p className='text-sm font-bold text-gray-800 mb-2'>
+												Instructions:
+											</p>
+											<div className='bg-gray-50 rounded-xl p-3 text-xs text-gray-600 max-h-32 overflow-y-auto'>
+												{recipe.instructions.slice(0, 3).map((step, index) => (
+													<div
+														key={index}
+														className='mb-2 last:mb-0 leading-relaxed'
+													>
+														<span className='font-bold text-orange-600'>
+															{index + 1}.
+														</span>{' '}
+														{step}
+													</div>
+												))}
+												{recipe.instructions.length > 3 && (
+													<div className='text-gray-400 text-center mt-2'>
+														+{recipe.instructions.length - 3} more steps...
+													</div>
+												)}
+											</div>
+										</div>
+									)}
+
+									{/* Mobile Action Buttons */}
+									<div className='flex gap-3'>
+										<button
+											onClick={() => copyRecipe(recipe)}
+											className='flex-1 bg-gray-100 text-gray-700 py-3 px-4 rounded-xl text-sm font-bold hover:bg-gray-200 transition-colors active:scale-95 flex items-center justify-center gap-2'
+										>
+											<ClipboardIcon size={18} />
+											Copy
+										</button>
+										<button
+											onClick={() => downloadRecipe(recipe)}
+											className='flex-1 bg-gradient-to-r from-orange-500 to-red-500 text-white py-3 px-4 rounded-xl text-sm font-bold hover:from-orange-600 hover:to-red-600 transition-all duration-300 active:scale-95 flex items-center justify-center gap-2'
+										>
+											<DownloadIcon size={18} />
+											Save
+										</button>
+									</div>
+								</div>
+							);
+						})}
+					</div>
+				</div>
+			</div>
+		);
+	}
+
+	return (
+		<div className='min-h-screen bg-gradient-to-br from-orange-50 to-red-50'>
+			<div className='max-w-sm mx-auto px-4 py-6'>
+				{/* Mobile Header */}
+				<div className='text-center mb-8 pt-4'>
+					<div className='flex items-center justify-center mb-4'>
+						<div className='bg-white p-4 rounded-2xl shadow-lg'>
+							<ChefHat size={36} className='text-orange-500' />
+						</div>
+					</div>
+					<h1 className='text-3xl font-bold text-gray-800 mb-2 leading-tight'>
+						What&apos;s in the Fridge?
+					</h1>
+					<p className='text-gray-600 text-base leading-relaxed px-2'>
+						Add your ingredients and discover amazing recipes!
+					</p>
+				</div>
+
+				{/* Mobile Input Section */}
+				<div className='bg-white rounded-2xl shadow-lg p-5 mb-6'>
+					<h2 className='text-xl font-bold text-gray-800 mb-4'>
+						Your Ingredients
+					</h2>
+
+					{/* Mobile Input */}
+					<div className='space-y-3 mb-6'>
+						<input
+							type='text'
+							value={inputValue}
+							onChange={(e) => setInputValue(e.target.value)}
+							onKeyPress={handleKeyPress}
+							placeholder='Type an ingredient...'
+							className='w-full px-4 py-4 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-300 text-base'
+						/>
+						<button
+							onClick={addIngredient}
+							className='w-full bg-gradient-to-r from-orange-500 to-red-500 text-white py-4 rounded-xl hover:from-orange-600 hover:to-red-600 transition-all duration-300 active:scale-95 flex items-center justify-center gap-2 font-bold text-base'
+						>
+							<Plus size={20} />
+							Add Ingredient
+						</button>
+					</div>
+
+					{/* Mobile Ingredients List */}
+					{ingredients.length > 0 ? (
+						<div className='space-y-4'>
+							<div className='space-y-3'>
+								{ingredients.map((ingredient, index) => (
+									<div
+										key={index}
+										className='flex items-center justify-between bg-gradient-to-r from-orange-100 to-red-100 px-4 py-3 rounded-xl border border-orange-200'
+									>
+										<span className='text-gray-800 capitalize font-medium text-base'>
+											{ingredient}
+										</span>
+										<button
+											onClick={() => removeIngredient(ingredient)}
+											className='text-red-500 hover:text-red-700 transition-colors p-1 active:scale-95'
+										>
+											<Trash2 size={20} />
+										</button>
+									</div>
+								))}
 							</div>
-						)}
+
+							<div className='text-center pt-2'>
+								<p className='text-gray-600 text-base'>
+									<span className='font-bold text-orange-600'>
+										{ingredients.length}
+									</span>{' '}
+									ingredient{ingredients.length !== 1 ? 's' : ''} ready to cook!
+									🍳
+								</p>
+							</div>
+						</div>
+					) : (
+						<div className='text-center py-8'>
+							<Sparkles className='mx-auto mb-4 text-gray-400' size={48} />
+							<p className='text-gray-500 text-base leading-relaxed'>
+								No ingredients yet.
+								<br />
+								Start adding what you have!
+							</p>
+						</div>
+					)}
+				</div>
+
+				{/* Mobile Generate Button */}
+				{ingredients.length > 0 && (
+					<div className='pb-6'>
+						<button
+							onClick={generateRecipes}
+							disabled={isGenerating}
+							className='w-full bg-gradient-to-r from-orange-500 to-red-500 text-white py-5 rounded-2xl font-bold text-lg hover:from-orange-600 hover:to-red-600 transition-all duration-300 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 shadow-lg'
+						>
+							{isGenerating ? (
+								<>
+									<div className='animate-spin rounded-full h-6 w-6 border-b-2 border-white'></div>
+									Generating Magic...
+								</>
+							) : (
+								<>
+									<ChefHat size={24} />
+									Generate AI Recipes
+								</>
+							)}
+						</button>
 					</div>
 				)}
 			</div>
 		</div>
 	);
-}
+};
+
+export default FridgeApp;
