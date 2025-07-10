@@ -2,18 +2,22 @@
 
 import { useState } from 'react';
 import {
-	PlusIcon,
-	DocumentArrowDownIcon,
-	ClipboardDocumentIcon,
-	ArrowLeftIcon,
-} from '@heroicons/react/24/outline';
-import { ChefHat, Clock, Users, Star, ShoppingCart, X } from 'lucide-react';
+	Plus,
+	X,
+	Clock,
+	Users,
+	Star,
+	ArrowLeft,
+	Copy,
+	Download,
+} from 'lucide-react';
 
 // Types
 interface Ingredient {
 	id: string;
 	name: string;
 	category: string;
+	emoji: string;
 }
 
 interface Recipe {
@@ -39,15 +43,62 @@ interface ApiRecipe {
 	instructions: string[];
 }
 
-const INGREDIENT_CATEGORIES = [
-	'Vegetables',
-	'Fruits',
-	'Meat',
-	'Dairy',
-	'Grains',
-	'Spices',
-	'Other',
+const INGREDIENT_SUGGESTIONS = [
+	{ name: 'eggs', emoji: '🥚', category: 'Dairy' },
+	{ name: 'tomato', emoji: '🍅', category: 'Vegetables' },
+	{ name: 'cheese', emoji: '🧀', category: 'Dairy' },
+	{ name: 'chicken', emoji: '🍗', category: 'Meat' },
+	{ name: 'onion', emoji: '🧅', category: 'Vegetables' },
+	{ name: 'garlic', emoji: '🧄', category: 'Vegetables' },
+	{ name: 'rice', emoji: '🍚', category: 'Grains' },
+	{ name: 'pasta', emoji: '🍝', category: 'Grains' },
+	{ name: 'milk', emoji: '🥛', category: 'Dairy' },
+	{ name: 'bread', emoji: '🍞', category: 'Grains' },
+	{ name: 'bell pepper', emoji: '🫑', category: 'Vegetables' },
+	{ name: 'carrot', emoji: '🥕', category: 'Vegetables' },
 ];
+
+// AI recipe generation with API integration
+const generateRecipesFromIngredients = async (
+	ingredients: string[]
+): Promise<Recipe[]> => {
+	try {
+		const response = await fetch('/api/recipes', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify({ ingredients }),
+		});
+
+		if (response.ok) {
+			const data = await response.json();
+			// Transform API response to match our Recipe interface
+			const transformedRecipes = data.recipes.map(
+				(recipe: ApiRecipe, index: number) => ({
+					id: index.toString(),
+					title: recipe.title,
+					description: recipe.description,
+					cookTime: recipe.cookingTime,
+					servings: recipe.servings,
+					difficulty: 'Easy' as const,
+					rating: 4.5,
+					ingredients: recipe.ingredients,
+					instructions: recipe.instructions,
+					missingIngredients: [],
+					matchPercentage: Math.floor(Math.random() * 30) + 70, // 70-100%
+				})
+			);
+			return transformedRecipes;
+		} else {
+			console.error('API request failed');
+			return [];
+		}
+	} catch (error) {
+		console.error('Error generating recipes:', error);
+		return [];
+	}
+};
 
 export default function FridgeRecipeApp() {
 	const [ingredients, setIngredients] = useState<Ingredient[]>([]);
@@ -58,16 +109,33 @@ export default function FridgeRecipeApp() {
 		'ingredients'
 	);
 
-	const addIngredient = () => {
-		if (newIngredient.trim()) {
-			const ingredient: Ingredient = {
-				id: Date.now().toString(),
-				name: newIngredient.trim(),
-				category: 'Other',
-			};
-			setIngredients([...ingredients, ingredient]);
-			setNewIngredient('');
+	const addIngredient = (ingredientData?: {
+		name: string;
+		emoji: string;
+		category: string;
+	}) => {
+		let name, emoji, category;
+
+		if (ingredientData) {
+			name = ingredientData.name;
+			emoji = ingredientData.emoji;
+			category = ingredientData.category;
+		} else {
+			if (!newIngredient.trim()) return;
+			name = newIngredient.trim();
+			emoji = '🥄'; // default emoji
+			category = 'Other';
 		}
+
+		const ingredient: Ingredient = {
+			id: Date.now().toString(),
+			name,
+			emoji,
+			category,
+		};
+
+		setIngredients([...ingredients, ingredient]);
+		setNewIngredient('');
 	};
 
 	const removeIngredient = (id: string) => {
@@ -82,36 +150,12 @@ export default function FridgeRecipeApp() {
 
 		try {
 			const ingredientNames = ingredients.map((ing) => ing.name);
-			const response = await fetch('/api/recipes', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-				},
-				body: JSON.stringify({ ingredients: ingredientNames }),
-			});
-
-			if (response.ok) {
-				const data = await response.json();
-				// Transform API response to match our Recipe interface
-				const transformedRecipes = data.recipes.map(
-					(recipe: ApiRecipe, index: number) => ({
-						id: index.toString(),
-						title: recipe.title,
-						description: recipe.description,
-						cookTime: recipe.cookingTime,
-						servings: recipe.servings,
-						difficulty: 'Easy' as const,
-						rating: 4.5,
-						ingredients: recipe.ingredients,
-						instructions: recipe.instructions,
-						missingIngredients: [],
-						matchPercentage: Math.floor(Math.random() * 30) + 70, // 70-100%
-					})
-				);
-				setRecipes(transformedRecipes);
-			}
+			const foundRecipes = await generateRecipesFromIngredients(
+				ingredientNames
+			);
+			setRecipes(foundRecipes);
 		} catch (error) {
-			console.error('Error generating recipes:', error);
+			console.error('Error finding recipes:', error);
 		} finally {
 			setLoading(false);
 		}
@@ -121,18 +165,34 @@ export default function FridgeRecipeApp() {
 		setCurrentScreen('ingredients');
 	};
 
-	const copyRecipe = async (recipe: Recipe) => {
-		const recipeText = formatRecipeText(recipe);
-		try {
-			await navigator.clipboard.writeText(recipeText);
+	const copyRecipe = (recipe: Recipe) => {
+		const recipeText = `${recipe.title}\n\n${
+			recipe.description
+		}\n\nCook Time: ${recipe.cookTime} | Servings: ${
+			recipe.servings
+		}\n\nIngredients:\n${recipe.ingredients
+			.map((ing) => `• ${ing}`)
+			.join('\n')}\n\nInstructions:\n${recipe.instructions
+			.map((step, index) => `${index + 1}. ${step}`)
+			.join('\n')}`;
+
+		navigator.clipboard.writeText(recipeText).then(() => {
+			// Could add a toast notification here
 			console.log('Recipe copied to clipboard!');
-		} catch (err) {
-			console.error('Failed to copy recipe:', err);
-		}
+		});
 	};
 
 	const downloadRecipe = (recipe: Recipe) => {
-		const recipeText = formatRecipeText(recipe);
+		const recipeText = `${recipe.title}\n\n${
+			recipe.description
+		}\n\nCook Time: ${recipe.cookTime} | Servings: ${
+			recipe.servings
+		}\n\nIngredients:\n${recipe.ingredients
+			.map((ing) => `• ${ing}`)
+			.join('\n')}\n\nInstructions:\n${recipe.instructions
+			.map((step, index) => `${index + 1}. ${step}`)
+			.join('\n')}`;
+
 		const blob = new Blob([recipeText], { type: 'text/plain' });
 		const url = URL.createObjectURL(blob);
 		const a = document.createElement('a');
@@ -144,32 +204,6 @@ export default function FridgeRecipeApp() {
 		a.click();
 		document.body.removeChild(a);
 		URL.revokeObjectURL(url);
-	};
-
-	const formatRecipeText = (recipe: Recipe) => {
-		return `${recipe.title}
-
-Description: ${recipe.description}
-Cooking Time: ${recipe.cookTime}
-Serves: ${recipe.servings}
-Difficulty: ${recipe.difficulty}
-Rating: ${recipe.rating}/5
-
-INGREDIENTS:
-${recipe.ingredients.map((ingredient) => `• ${ingredient}`).join('\n')}
-
-INSTRUCTIONS:
-${recipe.instructions.map((step, index) => `${index + 1}. ${step}`).join('\n')}
-
----
-Generated by What's in the Fridge? App
-`;
-	};
-
-	const handleKeyPress = (e: React.KeyboardEvent) => {
-		if (e.key === 'Enter') {
-			addIngredient();
-		}
 	};
 
 	const renderStars = (rating: number) => {
@@ -186,135 +220,150 @@ Generated by What's in the Fridge? App
 	};
 
 	return (
-		<div className='min-h-screen bg-gradient-to-br from-pink-100 via-purple-50 via-blue-50 to-green-100'>
+		<div className='min-h-screen bg-gradient-to-br from-blue-100 via-purple-50 to-pink-100'>
 			<div className='max-w-sm mx-auto px-4 py-6'>
-				{/* Ingredients Screen (Home) */}
+				{/* Ingredients Screen */}
 				{currentScreen === 'ingredients' && (
 					<div className='space-y-6'>
 						{/* Header */}
 						<div className='text-center'>
-							<div className='flex items-center justify-center gap-2 mb-3'>
-								<ChefHat className='w-8 h-8 text-orange-500' />
-								<h1 className='text-2xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 bg-clip-text text-transparent'>
-									What&apos;s in the Fridge?
-								</h1>
+							<div className='flex items-center justify-center gap-3 mb-4'>
+								<img
+									src='/Untitled.png'
+									alt='Fridge with food items'
+									className='w-24 h-24 object-contain'
+								/>
+								<div>
+									<h1 className='text-4xl font-bold text-gray-800 font-[var(--font-playful)] tracking-wide'>
+										What&apos;s in the
+									</h1>
+									<h1 className='text-4xl font-bold text-gray-800 font-[var(--font-playful)] tracking-wide'>
+										Fridge?
+									</h1>
+								</div>
 							</div>
-							<p className='text-gray-600 text-sm px-2'>
-								Add ingredients & discover recipes! ✨
+							<p className='text-gray-700 text-center max-w-sm mx-auto font-[var(--font-playful)] text-lg font-medium'>
+								Add your ingredients and discover amazing recipes you can make
+								right now! ✨
 							</p>
 						</div>
 
-						{/* Add Ingredient Form */}
-						<div className='bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-yellow-200 rounded-2xl p-4'>
-							<h2 className='text-lg font-bold mb-3 text-gray-800 flex items-center gap-2'>
-								<span className='text-xl'>🛒</span>
-								Add Ingredients
+						{/* Main Content Card */}
+						<div className='bg-white rounded-3xl shadow-xl p-6 border-4 border-blue-100'>
+							<h2 className='text-2xl font-bold text-gray-800 mb-6 text-center'>
+								Your Ingredients
 							</h2>
-							<div className='space-y-3'>
-								<input
-									type='text'
-									value={newIngredient}
-									onChange={(e) => setNewIngredient(e.target.value)}
-									onKeyPress={handleKeyPress}
-									placeholder='Enter ingredient...'
-									className='w-full px-4 py-4 border-2 border-yellow-300 rounded-xl focus:ring-2 focus:ring-yellow-200 focus:border-yellow-400 transition-all text-base'
-								/>
-								<button
-									onClick={addIngredient}
-									className='w-full py-4 bg-gradient-to-r from-orange-400 to-pink-500 text-white rounded-xl hover:from-orange-500 hover:to-pink-600 transition-all active:scale-95 flex items-center justify-center gap-2 font-bold text-base'
-								>
-									<PlusIcon className='w-5 h-5' />
-									Add Ingredient
-								</button>
-							</div>
-						</div>
 
-						{/* Ingredients List */}
-						<div className='bg-gradient-to-br from-green-50 to-blue-50 border-2 border-green-200 rounded-2xl p-4'>
-							<h3 className='text-lg font-bold mb-3 text-gray-800 flex items-center gap-2'>
-								<span className='text-xl'>🥘</span>
-								Your Ingredients ({ingredients.length})
-							</h3>
-							{ingredients.length === 0 ? (
-								<div className='text-center py-8'>
-									<div className='text-6xl mb-3'>🥪</div>
-									<p className='text-gray-600 text-sm px-2'>
-										No ingredients yet. Add what you have! 🌟
-									</p>
+							{/* Add Ingredient Section */}
+							<div className='mb-6'>
+								<div className='flex gap-3 mb-4 justify-center'>
+									<input
+										type='text'
+										value={newIngredient}
+										onChange={(e) => setNewIngredient(e.target.value)}
+										onKeyPress={(e) => e.key === 'Enter' && addIngredient()}
+										placeholder='Type an ingredient'
+										className='w-48 px-4 py-3 border-2 border-dashed border-orange-300 rounded-2xl focus:border-orange-400 focus:outline-none text-gray-600'
+									/>
+									<button
+										onClick={() => addIngredient()}
+										className='px-6 py-3 bg-gradient-to-r from-orange-400 to-red-400 text-white rounded-2xl font-bold shadow-lg hover:from-orange-500 hover:to-red-500 transition-all transform hover:scale-105 active:scale-95 flex items-center gap-2'
+									>
+										<Plus className='w-5 h-5' />
+										Add
+									</button>
 								</div>
-							) : (
-								<div className='space-y-3'>
-									{INGREDIENT_CATEGORIES.map((category) => {
-										const categoryIngredients = ingredients.filter(
-											(ing) => ing.category === category
-										);
-										if (categoryIngredients.length === 0) return null;
 
-										const categoryEmojis: Record<string, string> = {
-											Vegetables: '🥬',
-											Fruits: '🍎',
-											Meat: '🥩',
-											Dairy: '🧀',
-											Grains: '🌾',
-											Spices: '🌶️',
-											Other: '🍽️',
-										};
-
-										return (
-											<div key={category} className='bg-white rounded-xl p-3'>
-												<h4 className='font-bold text-gray-700 mb-2 flex items-center gap-2 text-sm'>
-													<span>{categoryEmojis[category] || '🍽️'}</span>
-													{category}
-												</h4>
-												<div className='flex flex-wrap gap-2'>
-													{categoryIngredients.map((ingredient) => (
-														<span
-															key={ingredient.id}
-															className='inline-flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-purple-100 to-pink-100 text-purple-800 rounded-full text-sm font-medium border border-purple-200 active:scale-95 transition-all'
-														>
-															{ingredient.name}
-															<button
-																onClick={() => removeIngredient(ingredient.id)}
-																className='hover:bg-purple-200 rounded-full p-1 transition-colors -mr-1'
-															>
-																<X className='w-3 h-3' />
-															</button>
-														</span>
-													))}
+								{/* Quick Add Suggestions */}
+								<div className='grid grid-cols-4 gap-3 mb-6'>
+									{INGREDIENT_SUGGESTIONS.slice(0, 8).map(
+										(suggestion, index) => (
+											<button
+												key={index}
+												onClick={() => addIngredient(suggestion)}
+												className='bg-gradient-to-br from-blue-50 to-purple-50 border-2 border-blue-100 rounded-2xl p-3 text-center hover:from-blue-100 hover:to-purple-100 transition-all transform hover:scale-105 active:scale-95'
+											>
+												<div className='text-3xl mb-1'>{suggestion.emoji}</div>
+												<div className='text-xs font-medium text-gray-600'>
+													{suggestion.name}
 												</div>
-											</div>
-										);
-									})}
+											</button>
+										)
+									)}
 								</div>
-							)}
+							</div>
 
+							{/* Ingredients Display */}
+							<div className='mb-6'>
+								{ingredients.length === 0 ? (
+									<div className='text-center py-8 text-gray-500'>
+										<div className='text-6xl mb-4'>🥪</div>
+										<p>Add ingredients to get started!</p>
+									</div>
+								) : (
+									<div className='bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl p-4 border-2 border-blue-100'>
+										<div className='flex flex-wrap gap-2 justify-center'>
+											{ingredients.map((ingredient) => (
+												<div
+													key={ingredient.id}
+													className='bg-white rounded-full px-3 py-2 shadow-md border-2 border-blue-100 flex items-center gap-2 flex-shrink-0'
+												>
+													<span className='text-lg'>{ingredient.emoji}</span>
+													<span className='font-medium text-gray-700 text-sm'>
+														{ingredient.name}
+													</span>
+													<button
+														onClick={() => removeIngredient(ingredient.id)}
+														className='text-gray-400 hover:text-red-500 transition-colors'
+													>
+														<X className='w-4 h-4' />
+													</button>
+												</div>
+											))}
+										</div>
+									</div>
+								)}
+							</div>
+
+							{/* Find Recipes Button */}
 							{ingredients.length > 0 && (
 								<button
 									onClick={findRecipes}
 									disabled={loading}
-									className='w-full mt-4 py-5 bg-gradient-to-r from-green-400 via-blue-500 to-purple-600 text-white rounded-2xl hover:from-green-500 hover:via-blue-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95 flex items-center justify-center gap-2 text-lg font-bold'
+									className='w-full py-4 bg-gradient-to-r from-red-400 to-orange-400 text-white rounded-2xl font-bold text-lg shadow-lg hover:from-red-500 hover:to-orange-500 disabled:opacity-50 transition-all transform hover:scale-105 active:scale-95'
 								>
-									<ChefHat className='w-6 h-6' />
-									Find Recipes! 🎉
+									{loading ? 'Finding Recipes... 🔍' : 'Find Recipes 🍳'}
 								</button>
 							)}
+						</div>
+
+						{/* Meal Categories */}
+						<div className='text-center'>
+							<h3 className='text-xl font-bold text-gray-700 mb-4'>
+								Breakfast - Dinner - Dessert
+							</h3>
+							<div className='flex justify-center gap-6 text-4xl'>
+								<span>🥞</span>
+								<span>🍽️</span>
+								<span>🧁</span>
+							</div>
 						</div>
 					</div>
 				)}
 
 				{/* Recipes Screen */}
 				{currentScreen === 'recipes' && (
-					<div className='space-y-4'>
+					<div className='space-y-6'>
 						{/* Header with Back Button */}
 						<div className='flex items-center gap-3 pb-2'>
 							<button
 								onClick={goBackToIngredients}
 								className='p-3 bg-white rounded-xl shadow-md active:scale-95 transition-all'
 							>
-								<ArrowLeftIcon className='w-6 h-6 text-gray-600' />
+								<ArrowLeft className='w-6 h-6 text-gray-600' />
 							</button>
 							<div className='flex-1'>
-								<h1 className='text-xl font-bold bg-gradient-to-r from-green-600 via-teal-600 to-blue-600 bg-clip-text text-transparent'>
+								<h1 className='text-xl font-bold text-gray-800 font-[var(--font-playful)]'>
 									🍳 Recipe Ideas
 								</h1>
 								<p className='text-gray-600 text-sm'>
@@ -355,120 +404,80 @@ Generated by What's in the Fridge? App
 									return (
 										<div
 											key={recipe.id}
-											className={`bg-gradient-to-br ${gradient} border-2 rounded-2xl overflow-hidden active:scale-98 transition-all`}
+											className={`bg-gradient-to-br ${gradient} border-2 rounded-2xl overflow-hidden p-4`}
 										>
-											<div className='p-4'>
-												<div className='flex justify-between items-start mb-3'>
-													<div className='flex-1 pr-2'>
-														<h3 className='text-lg font-bold text-gray-800 mb-1 flex items-center gap-1'>
-															{recipe.title}
-															<span className='text-lg'>🍽️</span>
-														</h3>
-														<p className='text-gray-700 text-sm leading-relaxed'>
-															{recipe.description}
-														</p>
-													</div>
-													<div className='flex flex-col items-end gap-2 flex-shrink-0'>
-														<div className='flex items-center gap-1'>
-															{renderStars(recipe.rating)}
-														</div>
-														<div className='flex gap-1'>
-															<button
-																onClick={() => copyRecipe(recipe)}
-																className='p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors active:scale-95'
-																title='Copy'
-															>
-																<ClipboardDocumentIcon className='h-4 w-4' />
-															</button>
-															<button
-																onClick={() => downloadRecipe(recipe)}
-																className='p-2 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors active:scale-95'
-																title='Download'
-															>
-																<DocumentArrowDownIcon className='h-4 w-4' />
-															</button>
-														</div>
-													</div>
+											<div className='flex justify-between items-start mb-3'>
+												<div className='flex-1 pr-2'>
+													<h3 className='text-lg font-bold text-gray-800 mb-1'>
+														{recipe.title} 🍽️
+													</h3>
+													<p className='text-gray-700 text-sm leading-relaxed'>
+														{recipe.description}
+													</p>
 												</div>
-
-												<div className='flex items-center gap-2 mb-3 text-xs'>
-													<div className='flex items-center gap-1 bg-white rounded-full px-2 py-1'>
-														<Clock className='w-3 h-3 text-blue-500' />
-														<span className='font-bold'>{recipe.cookTime}</span>
-													</div>
-													<div className='flex items-center gap-1 bg-white rounded-full px-2 py-1'>
-														<Users className='w-3 h-3 text-green-500' />
-														<span className='font-bold'>{recipe.servings}</span>
-													</div>
-													<div className='flex items-center gap-1 bg-white rounded-full px-2 py-1'>
-														<div className='w-3 h-3 bg-gradient-to-r from-green-400 to-blue-500 rounded-full'></div>
-														<span className='font-bold'>
-															{recipe.matchPercentage}%
-														</span>
-													</div>
+												<div className='flex items-center gap-1'>
+													{renderStars(recipe.rating)}
 												</div>
+											</div>
 
-												{recipe.missingIngredients.length > 0 && (
-													<div className='mb-3 p-3 bg-gradient-to-r from-orange-100 to-red-100 border border-orange-200 rounded-xl'>
-														<div className='flex items-center gap-2 mb-2'>
-															<ShoppingCart className='w-4 h-4 text-orange-600' />
-															<span className='font-bold text-orange-800 text-sm'>
-																Need to buy:
+											<div className='flex items-center gap-2 mb-3 text-xs'>
+												<div className='flex items-center gap-1 bg-white rounded-full px-2 py-1'>
+													<Clock className='w-3 h-3 text-blue-500' />
+													<span className='font-bold'>{recipe.cookTime}</span>
+												</div>
+												<div className='flex items-center gap-1 bg-white rounded-full px-2 py-1'>
+													<Users className='w-3 h-3 text-green-500' />
+													<span className='font-bold'>{recipe.servings}</span>
+												</div>
+												<div className='flex items-center gap-1 bg-white rounded-full px-2 py-1'>
+													<div className='w-3 h-3 bg-gradient-to-r from-green-400 to-blue-500 rounded-full'></div>
+													<span className='font-bold'>
+														{recipe.matchPercentage}%
+													</span>
+												</div>
+											</div>
+
+											{recipe.missingIngredients.length > 0 && (
+												<div className='mb-3 p-2 bg-orange-100 rounded-lg'>
+													<p className='text-orange-800 font-medium text-sm'>
+														Need: {recipe.missingIngredients.join(', ')}
+													</p>
+												</div>
+											)}
+
+											{/* Recipe Instructions */}
+											<div className='mt-4 p-3 bg-white rounded-lg border border-gray-200'>
+												<h4 className='font-bold text-gray-800 mb-2'>
+													Instructions:
+												</h4>
+												<ol className='text-sm text-gray-700 space-y-1'>
+													{recipe.instructions.map((step, stepIndex) => (
+														<li key={stepIndex} className='flex gap-2'>
+															<span className='font-medium text-blue-600'>
+																{stepIndex + 1}.
 															</span>
-														</div>
-														<div className='flex flex-wrap gap-1'>
-															{recipe.missingIngredients.map((ingredient) => (
-																<span
-																	key={ingredient}
-																	className='px-2 py-1 bg-orange-200 text-orange-800 rounded-full text-xs font-bold'
-																>
-																	{ingredient}
-																</span>
-															))}
-														</div>
-													</div>
-												)}
+															<span>{step}</span>
+														</li>
+													))}
+												</ol>
+											</div>
 
-												<div className='space-y-3'>
-													<div className='bg-white rounded-xl p-3'>
-														<h4 className='font-bold text-gray-800 mb-2 flex items-center gap-1 text-sm'>
-															<span>🥘</span>
-															Ingredients:
-														</h4>
-														<ul className='space-y-1'>
-															{recipe.ingredients.map((ingredient, index) => (
-																<li
-																	key={index}
-																	className='text-gray-700 flex items-center gap-2 text-sm'
-																>
-																	<span className='w-1.5 h-1.5 bg-purple-400 rounded-full flex-shrink-0'></span>
-																	{ingredient}
-																</li>
-															))}
-														</ul>
-													</div>
-													<div className='bg-white rounded-xl p-3'>
-														<h4 className='font-bold text-gray-800 mb-2 flex items-center gap-1 text-sm'>
-															<span>👨‍🍳</span>
-															Instructions:
-														</h4>
-														<ol className='space-y-2'>
-															{recipe.instructions.map((step, index) => (
-																<li
-																	key={index}
-																	className='text-gray-700 flex gap-2 text-sm'
-																>
-																	<span className='font-bold text-white bg-gradient-to-r from-purple-500 to-pink-500 rounded-full w-5 h-5 flex items-center justify-center text-xs flex-shrink-0 mt-0.5'>
-																		{index + 1}
-																	</span>
-																	<span className='leading-relaxed'>
-																		{step}
-																	</span>
-																</li>
-															))}
-														</ol>
-													</div>
-												</div>
+											{/* Copy and Download Buttons */}
+											<div className='mt-4 flex gap-3'>
+												<button
+													onClick={() => copyRecipe(recipe)}
+													className='flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-lg font-medium shadow-md hover:from-blue-600 hover:to-purple-600 transition-all transform hover:scale-105 active:scale-95'
+												>
+													<Copy className='w-4 h-4' />
+													Copy
+												</button>
+												<button
+													onClick={() => downloadRecipe(recipe)}
+													className='flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500 to-teal-500 text-white rounded-lg font-medium shadow-md hover:from-green-600 hover:to-teal-600 transition-all transform hover:scale-105 active:scale-95'
+												>
+													<Download className='w-4 h-4' />
+													Download
+												</button>
 											</div>
 										</div>
 									);
