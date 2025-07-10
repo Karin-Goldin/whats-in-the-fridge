@@ -11,6 +11,7 @@ import {
 	Copy,
 	Download,
 } from 'lucide-react';
+import * as emoji from 'node-emoji';
 
 // Types
 interface Ingredient {
@@ -123,7 +124,7 @@ export default function FridgeRecipeApp() {
 		} else {
 			if (!newIngredient.trim()) return;
 			name = newIngredient.trim();
-			emoji = '🥄'; // default emoji
+			emoji = findEmojiForIngredient(name); // Use smart emoji finder
 			category = 'Other';
 		}
 
@@ -163,6 +164,40 @@ export default function FridgeRecipeApp() {
 
 	const goBackToIngredients = () => {
 		setCurrentScreen('ingredients');
+	};
+
+	const findEmojiForIngredient = (ingredientName: string): string => {
+		// First, check if it's in our predefined suggestions
+		const predefined = INGREDIENT_SUGGESTIONS.find(
+			(item) => item.name.toLowerCase() === ingredientName.toLowerCase()
+		);
+		if (predefined) {
+			return predefined.emoji;
+		}
+
+		// Try to find emoji using node-emoji library
+		const emojiResult = emoji.find(ingredientName.toLowerCase());
+		if (emojiResult) {
+			return emojiResult.emoji;
+		}
+
+		// Try common food-related terms
+		const foodKeywords = [
+			ingredientName.toLowerCase(),
+			`${ingredientName.toLowerCase()}_food`,
+			`${ingredientName.toLowerCase()}_vegetable`,
+			`${ingredientName.toLowerCase()}_fruit`,
+		];
+
+		for (const keyword of foodKeywords) {
+			const result = emoji.find(keyword);
+			if (result) {
+				return result.emoji;
+			}
+		}
+
+		// Default fallback emoji
+		return '🥄';
 	};
 
 	const copyRecipe = (recipe: Recipe) => {
@@ -221,49 +256,49 @@ export default function FridgeRecipeApp() {
 
 	return (
 		<div className='min-h-screen bg-gradient-to-br from-blue-100 via-purple-50 to-pink-100'>
-			<div className='max-w-sm mx-auto px-4 py-6'>
+			<div className='max-w-sm md:max-w-md lg:max-w-2xl xl:max-w-3xl mx-auto px-2 md:px-4 py-6'>
 				{/* Ingredients Screen */}
 				{currentScreen === 'ingredients' && (
 					<div className='space-y-6'>
 						{/* Header */}
 						<div className='text-center'>
-							<div className='flex items-center justify-center gap-3 mb-4'>
+							<div className='flex items-center justify-center gap-3 lg:gap-4 mb-4'>
 								<img
 									src='/Untitled.png'
 									alt='Fridge with food items'
-									className='w-24 h-24 object-contain'
+									className='w-24 h-24 lg:w-32 lg:h-32 object-contain'
 								/>
 								<div>
-									<h1 className='text-4xl font-bold text-gray-800 font-[var(--font-playful)] tracking-wide'>
-										What&apos;s in the
+									<h1 className='text-4xl lg:text-6xl font-bold text-gray-800 font-[var(--font-playful)] tracking-wide'>
+										What&apos;s in your
 									</h1>
-									<h1 className='text-4xl font-bold text-gray-800 font-[var(--font-playful)] tracking-wide'>
+									<h1 className='text-4xl lg:text-6xl font-bold text-gray-800 font-[var(--font-playful)] tracking-wide'>
 										Fridge?
 									</h1>
 								</div>
 							</div>
-							<p className='text-gray-700 text-center max-w-sm mx-auto font-[var(--font-playful)] text-lg font-medium'>
+							<p className='text-gray-700 text-center max-w-sm md:max-w-md lg:max-w-2xl mx-auto font-[var(--font-playful)] text-lg lg:text-xl font-medium'>
 								Add your ingredients and discover amazing recipes you can make
 								right now! ✨
 							</p>
 						</div>
 
 						{/* Main Content Card */}
-						<div className='bg-white rounded-3xl shadow-xl p-6 border-4 border-blue-100'>
-							<h2 className='text-2xl font-bold text-gray-800 mb-6 text-center'>
+						<div className='bg-white rounded-3xl shadow-xl p-6 lg:p-8 border-4 border-blue-100'>
+							<h2 className='text-2xl lg:text-3xl font-bold text-gray-800 mb-6 text-center'>
 								Your Ingredients
 							</h2>
 
 							{/* Add Ingredient Section */}
 							<div className='mb-6'>
-								<div className='flex gap-3 mb-4 justify-center'>
+								<div className='flex gap-3 mb-4'>
 									<input
 										type='text'
 										value={newIngredient}
 										onChange={(e) => setNewIngredient(e.target.value)}
 										onKeyPress={(e) => e.key === 'Enter' && addIngredient()}
 										placeholder='Type an ingredient'
-										className='w-48 px-4 py-3 border-2 border-dashed border-orange-300 rounded-2xl focus:border-orange-400 focus:outline-none text-gray-600'
+										className='flex-1 px-4 py-3 border-2 border-dashed border-orange-300 rounded-2xl focus:border-orange-400 focus:outline-none text-gray-600'
 									/>
 									<button
 										onClick={() => addIngredient()}
@@ -275,7 +310,7 @@ export default function FridgeRecipeApp() {
 								</div>
 
 								{/* Quick Add Suggestions */}
-								<div className='grid grid-cols-4 gap-3 mb-6'>
+								<div className='grid grid-cols-4 lg:grid-cols-8 gap-3 mb-6'>
 									{INGREDIENT_SUGGESTIONS.slice(0, 8).map(
 										(suggestion, index) => (
 											<button
@@ -296,8 +331,8 @@ export default function FridgeRecipeApp() {
 							{/* Ingredients Display */}
 							<div className='mb-6'>
 								{ingredients.length === 0 ? (
-									<div className='text-center py-8 text-gray-500'>
-										<div className='text-6xl mb-4'>🥪</div>
+									<div className='text-center py-2 text-gray-500'>
+										<div className='text-6xl mb-2'>🥪</div>
 										<p>Add ingredients to get started!</p>
 									</div>
 								) : (
@@ -363,10 +398,10 @@ export default function FridgeRecipeApp() {
 								<ArrowLeft className='w-6 h-6 text-gray-600' />
 							</button>
 							<div className='flex-1'>
-								<h1 className='text-xl font-bold text-gray-800 font-[var(--font-playful)]'>
+								<h1 className='text-xl lg:text-3xl font-bold text-gray-800 font-[var(--font-playful)]'>
 									🍳 Recipe Ideas
 								</h1>
-								<p className='text-gray-600 text-sm'>
+								<p className='text-gray-600 text-sm lg:text-base'>
 									Based on {ingredients.length} ingredients
 								</p>
 							</div>
@@ -390,7 +425,7 @@ export default function FridgeRecipeApp() {
 								</p>
 							</div>
 						) : (
-							<div className='space-y-4'>
+							<div className='space-y-4 lg:grid lg:grid-cols-2 lg:gap-6 lg:space-y-0'>
 								{recipes.map((recipe, index) => {
 									const gradients = [
 										'from-pink-100 to-purple-100 border-pink-200',
