@@ -22,6 +22,9 @@ export const metadata: Metadata = {
 	title: "What's in the Fridge?",
 	description:
 		'Get delicious recipes based on ingredients you have at home. Reduce food waste and discover new meal ideas with AI-powered recipe suggestions.',
+	icons: {
+		icon: '/Untitled.png',
+	},
 };
 
 export default function RootLayout({
