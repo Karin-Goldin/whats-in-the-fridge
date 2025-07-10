@@ -57,6 +57,24 @@ const INGREDIENT_SUGGESTIONS = [
 	{ name: 'bread', emoji: '🍞', category: 'Grains' },
 	{ name: 'bell pepper', emoji: '🫑', category: 'Vegetables' },
 	{ name: 'carrot', emoji: '🥕', category: 'Vegetables' },
+	{ name: 'broccoli', emoji: '🥦', category: 'Vegetables' },
+	{ name: 'potato', emoji: '🥔', category: 'Vegetables' },
+	{ name: 'mushroom', emoji: '🍄', category: 'Vegetables' },
+	{ name: 'avocado', emoji: '🥑', category: 'Fruits' },
+	{ name: 'banana', emoji: '🍌', category: 'Fruits' },
+	{ name: 'apple', emoji: '🍎', category: 'Fruits' },
+	{ name: 'lemon', emoji: '🍋', category: 'Fruits' },
+	{ name: 'spinach', emoji: '🥬', category: 'Vegetables' },
+	{ name: 'cucumber', emoji: '🥒', category: 'Vegetables' },
+	{ name: 'lettuce', emoji: '🥬', category: 'Vegetables' },
+	{ name: 'butter', emoji: '🧈', category: 'Dairy' },
+	{ name: 'olive oil', emoji: '🫒', category: 'Oil' },
+	{ name: 'salt', emoji: '🧂', category: 'Seasoning' },
+	{ name: 'beef', emoji: '🥩', category: 'Meat' },
+	{ name: 'fish', emoji: '🐟', category: 'Meat' },
+	{ name: 'shrimp', emoji: '🦐', category: 'Meat' },
+	{ name: 'corn', emoji: '🌽', category: 'Vegetables' },
+	{ name: 'beans', emoji: '🫘', category: 'Legumes' },
 ];
 
 // AI recipe generation with API integration
@@ -109,6 +127,10 @@ export default function FridgeRecipeApp() {
 	const [currentScreen, setCurrentScreen] = useState<'ingredients' | 'recipes'>(
 		'ingredients'
 	);
+	const [showSuggestions, setShowSuggestions] = useState(false);
+	const [filteredSuggestions, setFilteredSuggestions] = useState<
+		typeof INGREDIENT_SUGGESTIONS
+	>([]);
 
 	const addIngredient = (ingredientData?: {
 		name: string;
@@ -164,6 +186,27 @@ export default function FridgeRecipeApp() {
 
 	const goBackToIngredients = () => {
 		setCurrentScreen('ingredients');
+	};
+
+	const handleInputChange = (value: string) => {
+		setNewIngredient(value);
+
+		if (value.trim().length > 0) {
+			const filtered = INGREDIENT_SUGGESTIONS.filter((item) =>
+				item.name.toLowerCase().includes(value.toLowerCase())
+			);
+			setFilteredSuggestions(filtered);
+			setShowSuggestions(filtered.length > 0);
+		} else {
+			setShowSuggestions(false);
+			setFilteredSuggestions([]);
+		}
+	};
+
+	const selectSuggestion = (suggestion: (typeof INGREDIENT_SUGGESTIONS)[0]) => {
+		addIngredient(suggestion);
+		setShowSuggestions(false);
+		setNewIngredient('');
 	};
 
 	const findEmojiForIngredient = (ingredientName: string): string => {
@@ -291,22 +334,61 @@ export default function FridgeRecipeApp() {
 
 							{/* Add Ingredient Section */}
 							<div className='mb-6'>
-								<div className='flex gap-3 mb-4'>
-									<input
-										type='text'
-										value={newIngredient}
-										onChange={(e) => setNewIngredient(e.target.value)}
-										onKeyPress={(e) => e.key === 'Enter' && addIngredient()}
-										placeholder='Type an ingredient'
-										className='flex-1 px-4 py-3 border-2 border-dashed border-orange-300 rounded-2xl focus:border-orange-400 focus:outline-none text-gray-600'
-									/>
-									<button
-										onClick={() => addIngredient()}
-										className='px-6 py-3 bg-gradient-to-r from-orange-400 to-red-400 text-white rounded-2xl font-bold shadow-lg hover:from-orange-500 hover:to-red-500 transition-all transform hover:scale-105 active:scale-95 flex items-center gap-2'
-									>
-										<Plus className='w-5 h-5' />
-										Add
-									</button>
+								<div className='relative'>
+									<div className='flex gap-3 mb-4'>
+										<input
+											type='text'
+											value={newIngredient}
+											onChange={(e) => handleInputChange(e.target.value)}
+											onKeyPress={(e) => {
+												if (e.key === 'Enter') {
+													addIngredient();
+													setShowSuggestions(false);
+												}
+											}}
+											onFocus={() => {
+												if (newIngredient.trim().length > 0) {
+													setShowSuggestions(filteredSuggestions.length > 0);
+												}
+											}}
+											onBlur={() => {
+												// Small delay to allow clicking on suggestions
+												setTimeout(() => setShowSuggestions(false), 200);
+											}}
+											placeholder='Type an ingredient'
+											className='flex-1 px-4 py-3 border-2 border-dashed border-orange-300 rounded-2xl focus:border-orange-400 focus:outline-none text-gray-600'
+										/>
+										<button
+											onClick={() => {
+												addIngredient();
+												setShowSuggestions(false);
+											}}
+											className='px-6 py-3 bg-gradient-to-r from-orange-400 to-red-400 text-white rounded-2xl font-bold shadow-lg hover:from-orange-500 hover:to-red-500 transition-all transform hover:scale-105 active:scale-95 flex items-center gap-2'
+										>
+											<Plus className='w-5 h-5' />
+											Add
+										</button>
+									</div>
+
+									{/* Autocomplete Suggestions */}
+									{showSuggestions && filteredSuggestions.length > 0 && (
+										<div className='absolute top-full left-0 right-16 bg-white border-2 border-orange-200 rounded-xl shadow-lg z-10 max-h-48 overflow-y-auto'>
+											{filteredSuggestions
+												.slice(0, 6)
+												.map((suggestion, index) => (
+													<button
+														key={index}
+														onClick={() => selectSuggestion(suggestion)}
+														className='w-full px-4 py-3 text-left hover:bg-orange-50 flex items-center gap-3 border-b border-orange-100 last:border-b-0 transition-colors'
+													>
+														<span className='text-2xl'>{suggestion.emoji}</span>
+														<span className='font-medium text-gray-700'>
+															{suggestion.name}
+														</span>
+													</button>
+												))}
+										</div>
+									)}
 								</div>
 
 								{/* Quick Add Suggestions */}
