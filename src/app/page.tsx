@@ -1,16 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import {
-	Plus,
-	X,
-	Clock,
-	Users,
-	Star,
-	ArrowLeft,
-	Copy,
-	Download,
-} from 'lucide-react';
+import { Plus, X, Clock, Users, ArrowLeft, Copy, Download } from 'lucide-react';
 import * as emoji from 'node-emoji';
 
 // Types
@@ -94,21 +85,58 @@ const generateRecipesFromIngredients = async (
 			const data = await response.json();
 			// Transform API response to match our Recipe interface
 			const transformedRecipes = data.recipes.map(
-				(recipe: ApiRecipe, index: number) => ({
-					id: index.toString(),
-					title: recipe.title,
-					description: recipe.description,
-					cookTime: recipe.cookingTime,
-					servings: recipe.servings,
-					difficulty: 'Easy' as const,
-					rating: 4.5,
-					ingredients: recipe.ingredients,
-					instructions: recipe.instructions,
-					missingIngredients: [],
-					matchPercentage: Math.floor(Math.random() * 30) + 70, // 70-100%
-				})
+				(recipe: ApiRecipe, index: number) => {
+					// Calculate real match percentage
+					const userIngredients = ingredients.map((ing) => ing.toLowerCase());
+					const recipeIngredients = recipe.ingredients.map((ing) =>
+						ing.toLowerCase()
+					);
+
+					// Count how many user ingredients are in the recipe
+					const matchingIngredients = userIngredients.filter((userIng) =>
+						recipeIngredients.some(
+							(recipeIng) =>
+								recipeIng.includes(userIng) || userIng.includes(recipeIng)
+						)
+					);
+
+					// Calculate percentage based on user ingredients that match
+					const matchPercentage = Math.round(
+						(matchingIngredients.length / userIngredients.length) * 100
+					);
+
+					// Find missing ingredients (ingredients in recipe but not in user's list)
+					const missingIngredients = recipeIngredients
+						.filter(
+							(recipeIng) =>
+								!userIngredients.some(
+									(userIng) =>
+										recipeIng.includes(userIng) || userIng.includes(recipeIng)
+								)
+						)
+						.slice(0, 3); // Show max 3 missing ingredients
+
+					return {
+						id: index.toString(),
+						title: recipe.title,
+						description: recipe.description,
+						cookTime: recipe.cookingTime,
+						servings: recipe.servings,
+						difficulty: 'Easy' as const,
+						rating: 4.5,
+						ingredients: recipe.ingredients,
+						instructions: recipe.instructions,
+						missingIngredients,
+						matchPercentage,
+					};
+				}
 			);
-			return transformedRecipes;
+
+			// Sort recipes by match percentage (highest first)
+			const sortedRecipes = transformedRecipes.sort(
+				(a: Recipe, b: Recipe) => b.matchPercentage - a.matchPercentage
+			);
+			return sortedRecipes;
 		} else {
 			console.error('API request failed');
 			return [];
@@ -282,19 +310,6 @@ export default function FridgeRecipeApp() {
 		a.click();
 		document.body.removeChild(a);
 		URL.revokeObjectURL(url);
-	};
-
-	const renderStars = (rating: number) => {
-		return Array.from({ length: 5 }, (_, i) => (
-			<Star
-				key={i}
-				className={`w-4 h-4 ${
-					i < Math.floor(rating)
-						? 'text-yellow-400 fill-current'
-						: 'text-gray-300'
-				}`}
-			/>
-		));
 	};
 
 	return (
@@ -523,18 +538,13 @@ export default function FridgeRecipeApp() {
 											key={recipe.id}
 											className={`bg-gradient-to-br ${gradient} border-2 rounded-2xl overflow-hidden p-4`}
 										>
-											<div className='flex justify-between items-start mb-3'>
-												<div className='flex-1 pr-2'>
-													<h3 className='text-lg font-bold text-gray-800 mb-1'>
-														{recipe.title} 🍽️
-													</h3>
-													<p className='text-gray-700 text-sm leading-relaxed'>
-														{recipe.description}
-													</p>
-												</div>
-												<div className='flex items-center gap-1'>
-													{renderStars(recipe.rating)}
-												</div>
+											<div className='mb-3'>
+												<h3 className='text-lg font-bold text-gray-800 mb-1'>
+													{recipe.title} 🍽️
+												</h3>
+												<p className='text-gray-700 text-sm leading-relaxed'>
+													{recipe.description}
+												</p>
 											</div>
 
 											<div className='flex items-center gap-2 mb-3 text-xs'>
@@ -547,8 +557,16 @@ export default function FridgeRecipeApp() {
 													<span className='font-bold'>{recipe.servings}</span>
 												</div>
 												<div className='flex items-center gap-1 bg-white rounded-full px-2 py-1'>
-													<div className='w-3 h-3 bg-gradient-to-r from-green-400 to-blue-500 rounded-full'></div>
-													<span className='font-bold'>
+													<div
+														className={`w-3 h-3 rounded-full ${
+															recipe.matchPercentage >= 80
+																? 'bg-gradient-to-r from-green-400 to-green-500'
+																: recipe.matchPercentage >= 60
+																? 'bg-gradient-to-r from-yellow-400 to-orange-400'
+																: 'bg-gradient-to-r from-red-400 to-red-500'
+														}`}
+													></div>
+													<span className='font-bold text-xs'>
 														{recipe.matchPercentage}%
 													</span>
 												</div>
