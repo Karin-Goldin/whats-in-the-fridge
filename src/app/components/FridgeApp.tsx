@@ -844,10 +844,10 @@ ${recipe.instructions.map((step, index) => `${index + 1}. ${step}`).join('\n')}
 									/>
 									<button
 										onClick={() => addIngredient(newIngredient)}
-										className='px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-3xl font-poppins font-bold text-base md:text-lg shadow-lg hover:from-orange-600 hover:to-red-600 transition-all transform hover:scale-105 active:scale-95 flex items-center gap-2'
+										className='px-3 md:px-8 py-3 md:py-4 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-3xl font-poppins font-bold text-base md:text-lg shadow-lg hover:from-orange-600 hover:to-red-600 transition-all transform hover:scale-105 active:scale-95 flex items-center gap-2'
 									>
 										<Plus className='w-5 h-5 md:w-6 md:h-6' />
-										Add
+										<span className='hidden md:inline'>Add</span>
 									</button>
 								</div>
 							</div>
