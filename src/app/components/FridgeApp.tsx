@@ -825,7 +825,7 @@ ${recipe.instructions.map((step, index) => `${index + 1}. ${step}`).join('\n')}
 						</div>
 
 						{/* Input Section */}
-						<div className='relative'>
+						<div className='relative mx-4 md:mx-0'>
 							<div className='bg-white bg-opacity-95 backdrop-blur-sm rounded-3xl p-1 shadow-2xl border-4 border-orange-300'>
 								<div className='flex items-center'>
 									<input
@@ -840,11 +840,11 @@ ${recipe.instructions.map((step, index) => `${index + 1}. ${step}`).join('\n')}
 											setTimeout(() => setShowSuggestions(false), 200)
 										}
 										placeholder='Type an ingredient'
-										className='flex-1 px-4 md:px-6 py-3 md:py-4 bg-transparent text-orange-900 font-poppins font-medium text-base md:text-lg placeholder-orange-600 focus:outline-none rounded-l-3xl'
+										className='flex-1 px-3 md:px-6 py-3 md:py-4 bg-transparent text-orange-900 font-poppins font-medium text-base md:text-lg placeholder-orange-600 focus:outline-none rounded-l-3xl'
 									/>
 									<button
 										onClick={() => addIngredient(newIngredient)}
-										className='px-3 md:px-8 py-3 md:py-4 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-3xl font-poppins font-bold text-base md:text-lg shadow-lg hover:from-orange-600 hover:to-red-600 transition-all transform hover:scale-105 active:scale-95 flex items-center gap-2'
+										className='px-3 md:px-8 py-3 md:py-4 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-3xl font-poppins font-bold text-base md:text-lg shadow-lg hover:from-orange-600 hover:to-red-600 transition-all transform hover:scale-105 active:scale-95 flex items-center gap-2 shrink-0'
 									>
 										<Plus className='w-5 h-5 md:w-6 md:h-6' />
 										<span className='hidden md:inline'>Add</span>
