@@ -825,8 +825,8 @@ ${recipe.instructions.map((step, index) => `${index + 1}. ${step}`).join('\n')}
 						</div>
 
 						{/* Input Section */}
-						<div className='relative mx-4 md:mx-0'>
-							<div className='bg-white bg-opacity-95 backdrop-blur-sm rounded-3xl p-1 shadow-2xl border-4 border-orange-300'>
+						<div className='relative mx-2 sm:mx-4 md:mx-0'>
+							<div className='bg-white bg-opacity-95 backdrop-blur-sm rounded-2xl sm:rounded-3xl p-1 shadow-2xl border-2 sm:border-4 border-orange-300'>
 								<div className='flex items-center'>
 									<input
 										type='text'
@@ -840,13 +840,13 @@ ${recipe.instructions.map((step, index) => `${index + 1}. ${step}`).join('\n')}
 											setTimeout(() => setShowSuggestions(false), 200)
 										}
 										placeholder='Type an ingredient'
-										className='flex-1 px-3 md:px-6 py-3 md:py-4 bg-transparent text-orange-900 font-poppins font-medium text-base md:text-lg placeholder-orange-600 focus:outline-none rounded-l-3xl'
+										className='flex-1 px-2 sm:px-3 md:px-6 py-3 md:py-4 bg-transparent text-orange-900 font-poppins font-medium text-sm sm:text-base md:text-lg placeholder-orange-600 focus:outline-none rounded-l-2xl sm:rounded-l-3xl min-w-0'
 									/>
 									<button
 										onClick={() => addIngredient(newIngredient)}
-										className='px-3 md:px-8 py-3 md:py-4 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-3xl font-poppins font-bold text-base md:text-lg shadow-lg hover:from-orange-600 hover:to-red-600 transition-all transform hover:scale-105 active:scale-95 flex items-center gap-2 shrink-0'
+										className='px-2 sm:px-3 md:px-8 py-3 md:py-4 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-2xl sm:rounded-3xl font-poppins font-bold text-sm sm:text-base md:text-lg shadow-lg hover:from-orange-600 hover:to-red-600 transition-all transform hover:scale-105 active:scale-95 flex items-center gap-1 sm:gap-2 shrink-0'
 									>
-										<Plus className='w-5 h-5 md:w-6 md:h-6' />
+										<Plus className='w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6' />
 										<span className='hidden md:inline'>Add</span>
 									</button>
 								</div>
