@@ -812,12 +812,12 @@ ${recipe.instructions.map((step, index) => `${index + 1}. ${step}`).join('\n')}
 							<FridgeIcon />
 
 							<div>
-								<h1 className='font-poppins font-black text-4xl lg:text-5xl text-orange-900 mb-4 leading-tight tracking-wide'>
+								<h1 className='font-poppins font-black text-2xl md:text-4xl lg:text-5xl text-orange-900 mb-4 leading-tight tracking-wide'>
 									WHAT&apos;S IN YOUR
 									<br />
 									FRIDGE?
 								</h1>
-								<p className='font-poppins font-semibold text-orange-800 text-lg max-w-md mx-auto leading-relaxed'>
+								<p className='font-poppins font-semibold text-orange-800 text-base md:text-lg max-w-md mx-auto leading-relaxed px-4 md:px-0'>
 									Add your ingredients and discover amazing recipes you can make
 									right now!
 								</p>
