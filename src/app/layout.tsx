@@ -29,11 +29,9 @@ export const metadata: Metadata = {
   description:
     "Get delicious recipes based on ingredients you have at home. Reduce food waste and discover new meal ideas with AI-powered recipe suggestions.",
   icons: {
-    icon: [
-      { url: "/favicon.ico", sizes: "any" },
-      { url: "/fridge-logo.png", type: "image/png" },
-    ],
-    apple: "/fridge-logo.png",
+    icon: [{ url: "/Untitled.png", type: "image/png" }],
+    shortcut: "/Untitled.png",
+    apple: "/Untitled.png",
   },
 };
 
