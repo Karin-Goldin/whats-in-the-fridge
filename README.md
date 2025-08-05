@@ -84,4 +84,4 @@ This project is open source and available under the [MIT License](LICENSE).
 
 **Happy Cooking!** 👨‍🍳👩‍🍳
 
-Built with ❤️ using Next.js and OpenAI
+Built with ❤️ by Karin Goldin
