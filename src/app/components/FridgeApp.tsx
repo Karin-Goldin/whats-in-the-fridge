@@ -802,7 +802,7 @@ ${recipe.instructions.map((step, index) => `${index + 1}. ${step}`).join("\n")}
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-400 via-yellow-400 to-red-400 relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-orange-400 via-yellow-400 to-red-400 relative overflow-hidden text-orange-900">
       <div className="relative z-10 max-w-sm md:max-w-md lg:max-w-2xl xl:max-w-3xl mx-auto px-4 py-8">
         {/* Ingredients Screen */}
         {currentScreen === "ingredients" && (
